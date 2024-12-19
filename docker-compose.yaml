@@ -1,0 +1,37 @@
+services:
+  app:
+    build:
+      dockerfile: Dockerfile
+      # context: ./dockerfile
+      target: release
+    container_name: te_api_app
+    hostname: te_api_app
+    networks:
+      - te_emb_service
+    restart: always
+    volumes:
+      - ./data:/mnt/data
+    # env_file:
+    #   - .env
+    environment:
+      PORT: ${PORT}
+      DB_SOURCE: ${DB_SOURCE}
+      DB: ${DB}
+      SQLITE: ${SQLITE}
+      REDIS: ${REDIS}
+      GIN_MODE: ${GIN_MODE}
+      STORAGE: ${STORAGE}
+    ports:
+    - "3000:3000"
+  redis:
+    container_name: te_redis
+    restart: always
+    image: redis:7.2.5-alpine
+    networks:
+      - te_emb_service
+    ports:
+      - '6379:6379'
+networks:
+  te_emb_service:
+    name: te_emb_service
+    driver: bridge
