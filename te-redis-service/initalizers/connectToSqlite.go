@@ -52,7 +52,7 @@ func ConnectToSqliteTimeseries() {
 	}
 	exists_or_create(store_path)
 	dsn := fmt.Sprintf("%s/%s.db?_journal_mode=WAL", store_path, strings.Trim(stdout.String(), "\n"))
-	log.Printf("te-redis-service|sqlite: %s", dsn)
+	log.Printf("te-redis-service timeseries | sqlite: %s", dsn)
 	DBLS, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Printf("%s", err.Error())

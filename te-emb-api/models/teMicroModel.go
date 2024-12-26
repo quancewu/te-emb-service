@@ -36,10 +36,10 @@ type Mix_sec_struct struct {
 
 type Boot_seq_record struct {
 	ID        int            `gorm:"primarykey" json:"-"`
-	CreatedAt time.Time      `json:"-"`
+	CreatedAt time.Time      `json:"create_at"`
 	UpdatedAt time.Time      `json:"-"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
-	Boot_Id   string         `gorm:"index" json:"boot_id"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	Boot_Id   string         `json:"boot_id" gorm:"index;uniqueIndex:boot_id_uniq"`
 	Path      string         `json:"path"`
 }
 

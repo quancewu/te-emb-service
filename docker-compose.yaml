@@ -17,7 +17,6 @@ services:
       PORT: ${PORT}
       DB_SOURCE: ${DB_SOURCE}
       DB: ${DB}
-      SQLITE: ${SQLITE}
       REDIS: ${REDIS}
       GIN_MODE: ${GIN_MODE}
       STORAGE: ${STORAGE}

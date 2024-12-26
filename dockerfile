@@ -1,17 +1,15 @@
 # ---dev---
-FROM golang:1.23 AS dev
+FROM --platform=$BUILDPLATFORM golang:1.23 AS build
 
 WORKDIR /opt/app/te-api
 
-ARG TARGETOS
-ARG TARGETARCH
-ARG TARGETPLATFORM
+ARG TARGETOS TARGETARCH TARGETPLATFORM
 
 ENV MODE=docker-mode
 
 RUN apt update
 
-RUN apt install make
+RUN apt install gcc-arm-linux-gnueabihf -y
 
 # build te emb service
 ADD te-emb-api /opt/app/te-api/te-emb-api
@@ -20,12 +18,10 @@ WORKDIR /opt/app/te-api/te-emb-api
 
 RUN go mod download
 
-RUN make build
-
 RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-make buildarm ;\
+GOOS=$TARGETOS GOARCH=arm CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++ CGO_ENABLED=1 go build -a -ldflags '-extldflags "-static"'  -o bin/te-emb-api ;\
 elif [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
-make build ;\
+GOOS=$TARGETOS GOARCH=$TARGETARCH go build -a -ldflags '-extldflags "-static"'  -o bin/te-emb-api ;\
 fi
 
 # build te redis servcie
@@ -36,15 +32,15 @@ WORKDIR /opt/app/te-api/te-redis-service
 RUN go mod download
 
 RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-make buildarm ;\
+GOOS=$TARGETOS GOARCH=arm CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++ CGO_ENABLED=1 go build -a -ldflags '-extldflags "-static"'  -o bin/te-redis-service ;\
 elif [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
-make build ;\
+GOOS=$TARGETOS GOARCH=$TARGETARCH go build -a -ldflags '-extldflags "-static"'  -o bin/te-redis-service ;\
 fi
 
 WORKDIR /opt/app/te-api
 
 # ---release---
-FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS release
+FROM alpine:3.21 AS release
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -53,11 +49,9 @@ WORKDIR /opt/app/te-api
 
 ENV MODE=docker-mode
 
-COPY --from=dev /opt/app/te-api/te-redis-service/bin/te-redis-service /opt/app/te-api/
+COPY --from=build /opt/app/te-api/te-redis-service/bin/te-redis-service /opt/app/te-api/
 
-# COPY ./te-emb-api/bin/te-emb-api /opt/app/te-api/
-
-COPY --from=dev /opt/app/te-api/te-emb-api/bin/te-emb-api /opt/app/te-api/
+COPY --from=build /opt/app/te-api/te-emb-api/bin/te-emb-api /opt/app/te-api/
 
 COPY ./script.sh /opt/app/te-api/
 

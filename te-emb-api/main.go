@@ -23,6 +23,8 @@ func main() {
 	r.POST("/signup", controllers.Singup)
 	r.POST("/login", controllers.Login)
 	r.GET("/validate", middleware.RequireAuth, controllers.Validate)
+	r.GET("/ams/database", controllers.TeAmsDB)
+	r.GET("/ams/device", controllers.TeAmsDevices)
 	r.GET("/ams/:id/latest", controllers.TeAmsData)
 	r.GET("/ams/:id", controllers.TeAmsDatas)
 	r.POST("/ams/:id", controllers.TeAmsDataInsert)

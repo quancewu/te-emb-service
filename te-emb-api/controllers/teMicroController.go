@@ -2,21 +2,29 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"te-emb-api/initalizers"
 	"te-emb-api/models"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type AmsId struct {
 	ID string `uri:"id" binding:"required"`
 }
 
+type AmsLatestBootId struct {
+	Boot_Id int `form:"boot_id"`
+}
+
 type AmsQueryPara struct {
-	After  time.Time `form:"after" time_format:"2006-01-02T15:04:05Z07:00"`
-	Before time.Time `form:"before" time_format:"2006-01-02T15:04:05Z07:00"`
+	After   time.Time `form:"after" time_format:"2006-01-02T15:04:05Z07:00"`
+	Before  time.Time `form:"before" time_format:"2006-01-02T15:04:05Z07:00"`
+	Boot_Id int       `form:"boot_id"`
 }
 
 type AmsPostPara struct {
@@ -31,15 +39,29 @@ type AmsPostPara struct {
 	PM_1          *float64  `json:"pm_1"`
 }
 
+type AmsDbResposeModel struct {
+	Hostname string                   `json:"hostname"`
+	Status   string                   `json:"status"`
+	Data     []models.Boot_seq_record `json:"data"`
+}
+
+type AmsDeviceResposeModel struct {
+	Hostname string                     `json:"hostname"`
+	Status   string                     `json:"status"`
+	Data     []models.Ams_serial_number `json:"data"`
+}
+
 type AmsResposeModel struct {
 	System_Id     int                   `json:"system_id"`
 	Serial_Number string                `json:"serial_number"`
+	Status        string                `json:"status"`
 	Data          models.Mix_sec_struct `json:"data"`
 }
 
 type AmsResposeModels struct {
 	System_Id     int                     `json:"system_id"`
 	Serial_Number string                  `json:"serial_number"`
+	Status        string                  `json:"status"`
 	After         time.Time               `json:"after"`
 	Before        time.Time               `json:"before"`
 	Data          []models.Mix_sec_struct `json:"data"`
@@ -52,6 +74,34 @@ func parseId(idstr string) int {
 	return sn
 }
 
+func TeAmsDB(c *gin.Context) {
+	var ams_boot_seq []models.Boot_seq_record
+	if res := initalizers.DBL.Find(&ams_boot_seq); res.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": "no boot seq table"})
+		return
+	}
+	hostname, _ := os.Hostname()
+	c.JSON(http.StatusOK, AmsDbResposeModel{
+		Hostname: hostname,
+		Status:   "okay",
+		Data:     ams_boot_seq,
+	})
+}
+
+func TeAmsDevices(c *gin.Context) {
+	var ams_sn_list []models.Ams_serial_number
+	if res := initalizers.DBLS.Find(&ams_sn_list); res.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": "no ams sn found"})
+		return
+	}
+	hostname, _ := os.Hostname()
+	c.JSON(http.StatusOK, AmsDeviceResposeModel{
+		Hostname: hostname,
+		Status:   "okay",
+		Data:     ams_sn_list,
+	})
+}
+
 func TeAmsData(c *gin.Context) {
 	// Get the id request uri
 	var amsId AmsId
@@ -59,20 +109,46 @@ func TeAmsData(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
 		return
 	}
+
+	var amsBootId AmsLatestBootId
+	if err := c.ShouldBind(&amsBootId); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
+	}
+	var query_db *gorm.DB
+	if amsBootId.Boot_Id >= 0 {
+		query_db = initalizers.DBLS
+	} else if amsBootId.Boot_Id < -100 {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": "boot_id need larger than -100"})
+		return
+	} else if amsBootId.Boot_Id < 0 {
+		var ams_boot_seq []models.Boot_seq_record
+		if res := initalizers.DBL.Limit(100).Order("created_at desc").Find(&ams_boot_seq); res.Error != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("no boot seq db %d", amsBootId.Boot_Id)})
+			return
+		}
+		if len(ams_boot_seq)+amsBootId.Boot_Id < 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("ams_boot_seq lens: %d, boot_id: %d", len(ams_boot_seq), amsBootId.Boot_Id)})
+		}
+		dbname := ams_boot_seq[-amsBootId.Boot_Id].Boot_Id
+		log.Printf("dbname: %s\n", dbname)
+		initalizers.ConnectToBackupSqliteTimeseries(dbname)
+		defer initalizers.DisconnectBackupSqlite()
+		query_db = initalizers.DBLSB
+	}
 	var intId int
 	if intId = parseId(amsId.ID); intId <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"msg": "id not found"})
 		return
 	} else {
 		var ams_sn models.Ams_serial_number
-		if res := initalizers.DBLS.Where(&models.Ams_serial_number{System_Id: intId}).First(&ams_sn); res.Error != nil {
+		if res := query_db.Where(&models.Ams_serial_number{System_Id: intId}).First(&ams_sn); res.Error != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("id: %s not found in table", amsId.ID)})
 			return
 		}
 	}
 
 	var amsGet models.Mix_sec_struct
-	res := initalizers.DBLS.Last(&amsGet, "system_id=?", intId)
+	res := query_db.Last(&amsGet, "system_id=?", intId)
 	// res := initalizers.DBL.Where("created_at BETWEEN ? AND ?", amsQueryPara.After, amsQueryPara.Before).Find(&amsGet)
 	if res.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"msg": "Fail to get data"})
@@ -82,6 +158,7 @@ func TeAmsData(c *gin.Context) {
 	c.JSON(http.StatusOK, AmsResposeModel{
 		System_Id:     intId,
 		Serial_Number: amsId.ID,
+		Status:        "okay",
 		Data:          amsGet,
 	})
 }
@@ -98,19 +175,42 @@ func TeAmsDatas(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
 		return
 	}
+	log.Printf("boot_id %d\n", amsQueryPara.Boot_Id)
+	var query_db *gorm.DB
+	if amsQueryPara.Boot_Id >= 0 {
+		query_db = initalizers.DBLS
+	} else if amsQueryPara.Boot_Id < -100 {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": "boot_id need larger than -100"})
+		return
+	} else if amsQueryPara.Boot_Id < 0 {
+		var ams_boot_seq []models.Boot_seq_record
+		if res := initalizers.DBL.Limit(100).Order("created_at desc").Find(&ams_boot_seq); res.Error != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("no boot seq db %d", amsQueryPara.Boot_Id)})
+			return
+		}
+		if len(ams_boot_seq)+amsQueryPara.Boot_Id < 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("ams_boot_seq lens: %d, boot_id: %d", len(ams_boot_seq), amsQueryPara.Boot_Id)})
+		}
+		dbname := ams_boot_seq[-amsQueryPara.Boot_Id].Boot_Id
+		log.Printf("dbname: %s\n", dbname)
+		initalizers.ConnectToBackupSqliteTimeseries(dbname)
+		defer initalizers.DisconnectBackupSqlite()
+		query_db = initalizers.DBLSB
+	}
+
 	var intId int
 	if intId = parseId(amsId.ID); intId <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"msg": "id not found"})
 	} else {
 		var ams_sn models.Ams_serial_number
-		if res := initalizers.DBLS.Where(&models.Ams_serial_number{System_Id: intId}).First(&ams_sn); res.Error != nil {
+		if res := query_db.Where(&models.Ams_serial_number{System_Id: intId}).First(&ams_sn); res.Error != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"msg": "id not found in table", "error": res.Error})
 			return
 		}
 	}
 
 	var amsGet []models.Mix_sec_struct
-	res := initalizers.DBLS.Where("timestamp BETWEEN ? AND ? and system_id=?", amsQueryPara.After, amsQueryPara.Before, intId).Find(&amsGet)
+	res := query_db.Where("timestamp BETWEEN ? AND ? and system_id=?", amsQueryPara.After, amsQueryPara.Before, intId).Find(&amsGet)
 	if res.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"msg": "Fail to get data"})
 		return
@@ -119,6 +219,7 @@ func TeAmsDatas(c *gin.Context) {
 	c.JSON(http.StatusOK, AmsResposeModels{
 		System_Id:     intId,
 		Serial_Number: amsId.ID,
+		Status:        "okay",
 		After:         amsQueryPara.After,
 		Before:        amsQueryPara.Before,
 		Data:          amsGet,

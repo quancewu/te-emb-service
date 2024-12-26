@@ -16,10 +16,13 @@ import (
 
 var DBL *gorm.DB
 var DBLS *gorm.DB
+var DBLSB *gorm.DB
 
 func ConnectToSQLITE() {
 	var err error
-	dsn := os.Getenv("SQLITE")
+	store_path := os.Getenv("STORAGE")
+	dsn := fmt.Sprintf("%s/te-emb-api.db?_journal_mode=WAL", store_path)
+	log.Printf("te-emb-api | sqlite: %s", dsn)
 	DBL, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Printf("%s", err.Error())
@@ -36,6 +39,7 @@ func ConnectToSQLITE() {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	DBL.AutoMigrate(&models.Mix_sec_struct{})
+	DBL.AutoMigrate(&models.Boot_seq_record{})
 }
 
 func ConnectToSqliteTimeseries() {
@@ -51,7 +55,7 @@ func ConnectToSqliteTimeseries() {
 	}
 	exists_or_create(store_path)
 	dsn := fmt.Sprintf("%s/%s.db?_journal_mode=WAL", store_path, strings.Trim(stdout.String(), "\n"))
-	log.Printf("te-emb-api|sqlite: %s", dsn)
+	log.Printf("te-emb-api timeseries | sqlite: %s", dsn)
 	DBLS, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Printf("%s", err.Error())
@@ -69,6 +73,40 @@ func ConnectToSqliteTimeseries() {
 
 	DBLS.AutoMigrate(&models.Mix_sec_struct{})
 	DBLS.AutoMigrate(&models.Ams_serial_number{})
+}
+
+func ConnectToBackupSqliteTimeseries(dbname string) {
+	var err error
+	store_path := os.Getenv("STORAGE")
+	exists_or_create(store_path)
+	dsn := fmt.Sprintf("%s/%s.db?_journal_mode=WAL", store_path, dbname)
+	log.Printf("te-emb-api       timeseries | sqlite: %s", dsn)
+	DBLSB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Printf("%s", err.Error())
+		panic("Failed to connect to db")
+	}
+	// set dv connection pool number
+	sqlDB, err := DBLSB.DB()
+	if err != nil {
+		log.Printf("%s", err.Error())
+		panic("Failed to connect to db")
+	}
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	DBLS.AutoMigrate(&models.Mix_sec_struct{})
+	DBLS.AutoMigrate(&models.Ams_serial_number{})
+}
+
+func DisconnectBackupSqlite() {
+	sqlDB, err := DBLSB.DB()
+	if err != nil {
+		log.Printf("%s", err.Error())
+		panic("Failed to connect to db")
+	}
+	sqlDB.Close()
 }
 
 // exists returns whether the given file or directory exists
