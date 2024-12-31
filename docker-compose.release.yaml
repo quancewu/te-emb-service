@@ -1,6 +1,6 @@
 services:
   app:
-    image: harbor.synclytic.app/te-emb-api/te-emb-service:alpha-0.9
+    image: harbor.synclytic.app/te-emb-api/te-emb-service:1.0-alpine
     container_name: te_api_app
     hostname: te_api_app
     networks:
@@ -8,15 +8,8 @@ services:
     restart: always
     volumes:
       - ./data:/mnt/data
-    # env_file:
-    #   - .env
-    environment:
-      PORT: ${PORT}
-      DB_SOURCE: ${DB_SOURCE}
-      DB: ${DB}
-      REDIS: ${REDIS}
-      GIN_MODE: ${GIN_MODE}
-      STORAGE: ${STORAGE}
+    env_file:
+      - .env
     ports:
     - "3000:3000"
   redis:

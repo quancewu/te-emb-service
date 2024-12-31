@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"te-redis-service/initalizers"
 	"te-redis-service/models"
 
@@ -37,6 +38,7 @@ func InsertAmsData(m models.Message) error {
 		}
 	}
 
+	ams.Serial_Number = strings.Trim(ams.Serial_Number, "-ab")
 	// log.Printf("AmsData ID: %s", ams.Serial_Number)
 	// log.Printf("AmsData  T: %v", float64_nan_check_print(ams.Temperature))
 	// log.Printf("AmsData RH: %v", float64_nan_check_print(ams.Relative_H))

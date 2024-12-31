@@ -69,7 +69,8 @@ check docker run
 
 ```
 executing task: docker compose -f "docker-compose.yaml" up -d --build 
-root@example-server:~/project/te-emb-service$ docker buildx build -t harbor.syncltic.app/te-emb-api/te-emb-service:alpha-0.9 --platform linux/arm64/v8,linux/amd64 . --no-cache
+root@example-server$ docker buildx build -t harbor.syncltic.app/te-emb-api/te-emb-service:alpha-0.9\
+                                --platform linux/arm64/v8,linux/amd64 . --no-cache
 [+] Building 153.1s (49/49) FINISHED                                                                                               docker:default
  => [internal] load build definition from dockerfile                                                                                         0.0s
  => => transferring dockerfile: 1.73kB                                                                                                       0.0s
@@ -151,6 +152,13 @@ Add notes about how to use the system.
 ## 🚀 Deployment <a name = "deployment"></a>
 
 Add additional notes about how to deploy this on a live system.
+.env requirement
+
+PORT=3000
+DB_SOURCE=SQLITE
+REDIS="redis://redis:@localhost:6379/0"
+GIN_MODE=debug
+STORAGE=${path}
 
 ## ⛏️ Built Using <a name = "built_using"></a>
 

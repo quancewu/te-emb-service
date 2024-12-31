@@ -30,3 +30,7 @@ _testmain.go
 *.prof
 
 app
+/te-redis-service/te-redis-service
+/te-emb-api/te-emb/api
+
+/*/bin
