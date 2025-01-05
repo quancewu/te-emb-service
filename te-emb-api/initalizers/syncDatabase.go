@@ -12,7 +12,6 @@ import (
 )
 
 func SyncDatabase() {
-	// DB.AutoMigrate(&models.User{})
 	DBL.AutoMigrate(&models.User{})
 
 	cmd := exec.Command("cat", "/proc/sys/kernel/random/boot_id")

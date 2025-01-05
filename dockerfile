@@ -49,6 +49,8 @@ WORKDIR /opt/app/te-api
 
 ENV MODE=docker-mode
 
+ENV APP_VERSION="1.0.0"
+
 COPY --from=build /opt/app/te-api/te-redis-service/bin/te-redis-service /opt/app/te-api/
 
 COPY --from=build /opt/app/te-api/te-emb-api/bin/te-emb-api /opt/app/te-api/

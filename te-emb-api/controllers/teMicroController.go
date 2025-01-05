@@ -28,15 +28,26 @@ type AmsQueryPara struct {
 }
 
 type AmsPostPara struct {
-	System_Id     int       `json:"system_id"`
-	Serial_Number string    `json:"serial_number"`
-	Timestamp     time.Time `json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00"`
-	RSSI          *float64  `json:"rssi"`
-	Timestamp_SU  time.Time `json:"timestamp_su" time_format:"2006-01-02T15:04:05Z07:00"`
-	Temperature   *float64  `json:"temperature"`
-	Relative_H    *float64  `json:"relative_humidity"`
-	Pressure      *float64  `json:"pressure"`
-	PM_1          *float64  `json:"pm_1"`
+	System_Id       int       `json:"system_id"`
+	Serial_Number   string    `json:"serial_number"`
+	Timestamp       time.Time `json:"timestamp" time_format:"2006-01-02T15:04:05Z07:00"`
+	RSSI            *float64  `json:"rssi"`
+	Timestamp_SU    time.Time `json:"timestamp_su" time_format:"2006-01-02T15:04:05Z07:00"`
+	Temperature     *float64  `json:"temperature"`
+	Relative_H      *float64  `json:"relative_humidity"`
+	Pressure        *float64  `json:"pressure"`
+	PM_1            *float64  `json:"pm_1"`
+	PM_2p5          *float64  `json:"pm_2p5"`
+	PM_10           *float64  `json:"pm_10"`
+	CO_2            *float64  `json:"co_2"`
+	Wind_Speed      *float64  `json:"wind_speed"`
+	Wind_Direction  *float64  `json:"wind_direction"`
+	Input_volt      *float64  `json:"input_voltage"`
+	Solar_irrad     *float64  `json:"solar_irradirance"`
+	Pyr_temperature *float64  `json:"pyr_temperature"`
+	Bat             *float64  `json:"bat"`
+	Raw             string    `json:"raw"`
+	Flag            int       `json:"flag"`
 }
 
 type AmsDbResposeModel struct {
@@ -238,15 +249,25 @@ func TeAmsDataInsert(c *gin.Context) {
 		return
 	}
 	amsPost := models.Mix_sec_struct{
-		System_Id:     amsPostPara.System_Id,
-		Serial_Number: amsPostPara.Serial_Number,
-		Timestamp:     amsPostPara.Timestamp,
-		RSSI:          amsPostPara.RSSI,
-		Timestamp_SU:  amsPostPara.Timestamp_SU,
-		Temperature:   amsPostPara.Temperature,
-		Relative_H:    amsPostPara.Relative_H,
-		Pressure:      amsPostPara.Pressure,
-		PM_1:          amsPostPara.RSSI,
+		System_Id:       amsPostPara.System_Id,
+		Serial_Number:   amsPostPara.Serial_Number,
+		Timestamp:       amsPostPara.Timestamp,
+		RSSI:            amsPostPara.RSSI,
+		Timestamp_SU:    amsPostPara.Timestamp_SU,
+		Temperature:     amsPostPara.Temperature,
+		Relative_H:      amsPostPara.Relative_H,
+		Pressure:        amsPostPara.Pressure,
+		PM_1:            amsPostPara.RSSI,
+		PM_2p5:          amsPostPara.PM_2p5,
+		PM_10:           amsPostPara.PM_10,
+		CO_2:            amsPostPara.CO_2,
+		Wind_Speed:      amsPostPara.Wind_Speed,
+		Wind_Direction:  amsPostPara.Wind_Direction,
+		Input_volt:      amsPostPara.Input_volt,
+		Solar_irrad:     amsPostPara.Solar_irrad,
+		Pyr_temperature: amsPostPara.Pyr_temperature,
+		Raw:             "",
+		Flag:            201,
 	}
 	result := initalizers.DBL.Create(&amsPost)
 	if result.Error != nil {
